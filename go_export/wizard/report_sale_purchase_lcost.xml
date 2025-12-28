@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <record id="report_sale_purchase_lcost" model="ir.ui.view">
+            <field name="name">report.sale.purchase.lcost</field>
+            <field name="model">report.sale.purchase.lcost</field>
+            <field name="arch" type="xml">
+                <form string="ModelTitle">
+                    <sheet>
+                        <group>
+                            <field name="partner_ids" widget="many2many_tags"/>
+                            <field name="date"/>
+                        </group>
+                        <footer>
+                            <button string="Generate Report" type="object" name="action_xlsx_report"
+                                    class="btn btn-primary"/>
+                        </footer>
+                    </sheet>
+
+                </form>
+
+            </field>
+        </record>
+        <record id="action_report_sale_purchase_lcost" model="ir.actions.act_window">
+            <field name="name">Generate Report</field>
+            <field name="res_model">report.sale.purchase.lcost</field>
+            <field name="view_mode">form</field>
+            <field name="target">new</field>
+            <!--    <field name="context">{'active_model': 'pickalbatros.reservation', 'active_ids': active_ids}</field>-->
+        </record>
+        <menuitem name="Go Export Report" id="menu_report_sale_purchase_lcost"
+                  parent="sale.sale_menu_root" action="action_report_sale_purchase_lcost" sequence="100"/>
+    </data>
+</odoo>

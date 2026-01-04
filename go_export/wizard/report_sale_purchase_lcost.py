@@ -2,6 +2,7 @@ from odoo import fields, models, api
 from io import BytesIO
 import xlsxwriter
 import base64
+import json
 from datetime import datetime
 class Report(models.TransientModel):
     _name = 'report.sale.purchase.lcost'
@@ -29,7 +30,6 @@ class Report(models.TransientModel):
             customer_name= order['partner_id'][1]
             order_date = order['date_order'].date()
             order['picking_ids'] = self.env['stock.picking'].browse(order['picking_ids'])
-
             for pick in order['picking_ids']:
                 moves_with_lots = pick.move_ids.filtered(lambda p: p.lot_ids)
                 for move in moves_with_lots:
@@ -44,6 +44,7 @@ class Report(models.TransientModel):
                             'purchase_cost': 0,
                             'landed_costs': {},
                             'sale_price': 0,
+                            'analytic_accounts': '',
                         }
                         for po in move_valuation_lot.filtered(lambda p: p.stock_move_id.purchase_line_id and not p.stock_landed_cost_id):
                             serial_data['purchase_cost'] += abs(po.value)
@@ -57,8 +58,17 @@ class Report(models.TransientModel):
                         sale_price = 0
                         for sale_line in order['order_line']:
                             sale_lin_obj = self.env['sale.order.line'].browse(sale_line)
+                            if sale_lin_obj.analytic_distribution:
+                                account_names = ''
+                                for account_id,percentage in sale_lin_obj.analytic_distribution.items():
+                                    analytic_account = self.env['account.analytic.account'].browse(int(account_id))
+                                    print(f"{account_id}, Name: {analytic_account.name}, Percentage: {percentage}%")
+                                    account_names += f"{analytic_account.name} | {percentage} %, "
+
+                                serial_data['analytic_accounts'] = account_names.rstrip(', ')
+
                             if sale_lin_obj.product_id.id == move.product_id.id:
-                                sale_price= sale_lin_obj    .price_total
+                                sale_price= sale_lin_obj.price_total
                         serial_data['sale_price'] = sale_price
                         report_data.append(serial_data)
                         print("purchase data", serial_data)
@@ -81,7 +91,7 @@ class Report(models.TransientModel):
         text_format = workbook.add_format({'border': 1})
         date_format = workbook.add_format({'num_format': 'dd/mm/yyyy', 'border': 1})
         print("sorted_landed_cost_names", sorted_landed_cost_names)
-        headers = ['Customer Name', 'Order Date', 'Product Name', 'Serial Number', 'Purchase Cost'] + sorted_landed_cost_names + ['Total Landed Cost', 'Sale Price', 'Gross Profit', 'Gross Profit %']
+        headers = ['Customer Name', 'Order Date', 'Product Name', 'Serial Number','Analytic Account', 'Purchase Cost'] + sorted_landed_cost_names + ['Total Landed Cost', 'Sale Price', 'Gross Profit', 'Gross Profit %']
         for col , header in enumerate(headers):
             worksheet.write(0, col, header, header_format)
 
@@ -95,6 +105,8 @@ class Report(models.TransientModel):
             worksheet.write(row, col, serial['product_name'], text_format)
             col += 1
             worksheet.write(row, col, serial['lot_name'], text_format)
+            col += 1
+            worksheet.write(row, col, serial['analytic_accounts'], text_format)
             col += 1
             worksheet.write(row, col, serial['purchase_cost'], currency_format)
             col += 1

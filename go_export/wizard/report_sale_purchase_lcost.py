@@ -13,7 +13,7 @@ class Report(models.TransientModel):
         string='Customers',
     )
     date = fields.Date(string='Start Date')
-
+    sale_person_ids = fields.Many2many('hr.employee',string='Sales Persons')
 
     def action_xlsx_report(self):
         domain = [('state', 'in', ['sale', 'done'])]
@@ -21,12 +21,16 @@ class Report(models.TransientModel):
             domain += [('partner_id', 'in', self.partner_ids.ids)]
         if self.date:
             domain += [('date_order', '>=', self.date)]
+        if self.sale_person_ids:
+            domain += [('sale_person_id','in',self.sale_person_ids.ids)]
 
         report_data = []
         all_landed_cost_names = set()
         # print("domain ====== ", domain)
-        orders = self.env['sale.order'].search_read(domain,['partner_id','picking_ids','order_line','date_order'])
+        orders = self.env['sale.order'].search_read(domain,['partner_id','sale_person_id','picking_ids','order_line','date_order'])
         for order in orders:
+            sale_person = order['sale_person_id'][1] if isinstance(order['sale_person_id'], tuple) else ''
+            print("sale_person",sale_person)
             customer_name= order['partner_id'][1]
             order_date = order['date_order'].date()
             order['picking_ids'] = self.env['stock.picking'].browse(order['picking_ids'])
@@ -37,6 +41,7 @@ class Report(models.TransientModel):
                         move_valuation_lot = self.env['stock.valuation.layer'].search([('lot_id', '=', lot.id)])
                         # print("len", len(move_purchase))
                         serial_data = {
+                            'sale_person':sale_person,
                             'customer_name': customer_name,
                             'order_date': order_date,
                             'product_name': move.product_id.name,
@@ -91,13 +96,15 @@ class Report(models.TransientModel):
         text_format = workbook.add_format({'border': 1})
         date_format = workbook.add_format({'num_format': 'dd/mm/yyyy', 'border': 1})
         print("sorted_landed_cost_names", sorted_landed_cost_names)
-        headers = ['Customer Name', 'Order Date', 'Product Name', 'Serial Number','Analytic Account', 'Purchase Cost'] + sorted_landed_cost_names + ['Total Landed Cost', 'Sale Price', 'Gross Profit', 'Gross Profit %']
+        headers = ['Sales Person','Customer Name', 'Order Date', 'Product Name', 'Serial Number','Analytic Account', 'Purchase Cost'] + sorted_landed_cost_names + ['Total Landed Cost', 'Sale Price', 'Gross Profit', 'Gross Profit %']
         for col , header in enumerate(headers):
             worksheet.write(0, col, header, header_format)
 
         row = 1
         for serial in report_data:
             col = 0
+            worksheet.write(row,col,serial['sale_person'],text_format)
+            col +=1
             worksheet.write(row, col, serial['customer_name'], text_format)
             col += 1
             worksheet.write(row, col, serial['order_date'], date_format)

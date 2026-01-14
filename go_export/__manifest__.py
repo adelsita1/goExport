@@ -25,6 +25,7 @@ Long description of module's purpose
         'security/ir.model.access.csv',
         'views/stock_valuation_layer.xml',
         'wizard/report_sale_purchase_lcost.xml',
+        'views/sale_order.xml'
     ],
     # only loaded in demonstration mode
     'demo': [

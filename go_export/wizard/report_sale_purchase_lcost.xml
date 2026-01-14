@@ -9,6 +9,7 @@
                 <form string="ModelTitle">
                     <sheet>
                         <group>
+                            <field name="sale_person_ids" widget="many2many_tags"/>
                             <field name="partner_ids" widget="many2many_tags"/>
                             <field name="date"/>
                         </group>
